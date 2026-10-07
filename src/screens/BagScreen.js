@@ -11,32 +11,36 @@ import {
 } from 'react-native';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { formatPrice } from '../utils/catalog';
 
 export const BagScreen = ({ onCheckout, onNavigateToShop, onNavigateToProfile }) => {
-  const { cart, removeFromCart, updateQuantity, subtotal, isSyncing, clearCart } = useCart();
+  const { cart, removeFromCart, updateQuantity, subtotal, isSyncing, clearCart, totalItemCount } =
+    useCart();
   const { user } = useAuth();
 
-  const formattedSubtotal = `₦${subtotal.toLocaleString()}`;
+  const formattedSubtotal = formatPrice(subtotal);
+  const itemCountLabel = `${totalItemCount} item${totalItemCount === 1 ? '' : 's'}`;
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fcfbf9" />
 
       {/* Screen Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>YOUR SHOPPING BAG</Text>
-          <Text style={styles.syncStatusText}>
-            {user ? `⚡ Synced with ${user.email}` : 'Guest Bag • Sign in to sync across devices'}
-          </Text>
-        </View>
-
-        {cart.length > 0 && (
-          <TouchableOpacity onPress={clearCart} style={styles.clearBtn}>
-            <Text style={styles.clearText}>Clear</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      <ScreenHeader
+        title="My Shopping Bag"
+        subtitle={itemCountLabel}
+        right={
+          cart.length > 0 ? (
+            <TouchableOpacity onPress={clearCart} style={styles.clearBtn}>
+              <Text style={styles.clearText}>Clear</Text>
+            </TouchableOpacity>
+          ) : null
+        }
+      />
+      <Text style={styles.syncStatusText}>
+        {user ? `⚡ Synced with ${user.email}` : 'Guest Bag • Sign in to sync across devices'}
+      </Text>
 
       {/* Cloud Sync Progress Banner */}
       {isSyncing && (
@@ -66,23 +70,27 @@ export const BagScreen = ({ onCheckout, onNavigateToShop, onNavigateToProfile })
         <View style={styles.mainWrapper}>
           <ScrollView contentContainerStyle={styles.itemList} showsVerticalScrollIndicator={false}>
             {cart.map((item, index) => (
-              <View key={`${item.id}-${item.selectedSize}-${index}`} style={styles.cartItem}>
-                <Image source={{ uri: item.image }} style={styles.itemImage} resizeMode="cover" />
+              <View key={`${item.id}-${item.size}-${index}`} style={styles.cartItem}>
+                {item.image_url ? (
+                  <Image source={{ uri: item.image_url }} style={styles.itemImage} resizeMode="cover" />
+                ) : (
+                  <View style={styles.itemImage} />
+                )}
 
                 <View style={styles.itemDetails}>
                   <Text style={styles.itemTitle} numberOfLines={1}>
-                    {item.title}
+                    {item.name}
                   </Text>
-                  <Text style={styles.itemSize}>SIZE: {item.selectedSize}</Text>
+                  <Text style={styles.itemSize}>SIZE: {item.size}</Text>
                   <Text style={styles.itemPrice}>
-                    ₦{(item.price * item.quantity).toLocaleString()}
+                    {formatPrice(item.price * item.quantity)}
                   </Text>
 
                   {/* Quantity Stepper Controls */}
                   <View style={styles.stepperRow}>
                     <TouchableOpacity
                       style={styles.stepperBtn}
-                      onPress={() => updateQuantity(item.id, item.selectedSize, -1)}
+                      onPress={() => updateQuantity(item.id, item.size, -1)}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.stepperBtnText}>-</Text>
@@ -92,7 +100,7 @@ export const BagScreen = ({ onCheckout, onNavigateToShop, onNavigateToProfile })
 
                     <TouchableOpacity
                       style={styles.stepperBtn}
-                      onPress={() => updateQuantity(item.id, item.selectedSize, 1)}
+                      onPress={() => updateQuantity(item.id, item.size, 1)}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.stepperBtnText}>+</Text>
@@ -103,7 +111,7 @@ export const BagScreen = ({ onCheckout, onNavigateToShop, onNavigateToProfile })
                 {/* Remove Item */}
                 <TouchableOpacity
                   style={styles.removeBtn}
-                  onPress={() => removeFromCart(item.id, item.selectedSize)}
+                  onPress={() => removeFromCart(item.id, item.size)}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.removeIcon}>🗑️</Text>
@@ -153,26 +161,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fcfbf9',
   },
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e8e6df',
-    backgroundColor: '#fcfbf9',
-  },
-  headerTitle: {
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 2,
-    color: '#111111',
-  },
   syncStatusText: {
-    fontSize: 10,
+    fontSize: 10.5,
     color: '#666666',
-    marginTop: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    backgroundColor: '#f6f3ee',
   },
   clearBtn: {
     padding: 6,

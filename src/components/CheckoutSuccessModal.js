@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
+import { formatPrice } from '../utils/catalog';
 
 export const CheckoutSuccessModal = ({ visible, onClose, orderNumber, totalAmount }) => {
   return (
@@ -31,7 +32,7 @@ export const CheckoutSuccessModal = ({ visible, onClose, orderNumber, totalAmoun
 
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Total Amount:</Text>
-              <Text style={styles.detailValue}>₦{totalAmount.toLocaleString()}</Text>
+              <Text style={styles.detailValue}>{formatPrice(totalAmount)}</Text>
             </View>
 
             <View style={styles.detailRow}>

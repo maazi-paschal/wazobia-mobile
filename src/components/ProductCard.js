@@ -8,6 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useCart } from '../context/CartContext';
+import { formatPrice, defaultSizeFor } from '../utils/catalog';
 
 const { width } = Dimensions.get('window');
 // 2-column calculation with balanced gutters
@@ -15,9 +16,7 @@ const CARD_WIDTH = (width - 40) / 2;
 
 export const ProductCard = ({ product, onPressProduct }) => {
   const { addToCart } = useCart();
-  const [selectedSize, setSelectedSize] = useState(
-    product.defaultSize || product.sizes?.[0] || 'M'
-  );
+  const [selectedSize, setSelectedSize] = useState(defaultSizeFor(product.sizes));
 
   const handleAdd = () => {
     addToCart(product, selectedSize);
@@ -31,23 +30,27 @@ export const ProductCard = ({ product, onPressProduct }) => {
         onPress={() => onPressProduct(product)}
         style={styles.imageWrapper}
       >
-        <Image
-          source={{ uri: product.image }}
-          style={styles.productImage}
-          resizeMode="cover"
-        />
-        <View style={styles.categoryBadge}>
-          <Text style={styles.categoryText}>{product.category.toUpperCase()}</Text>
-        </View>
+        {product.image_url ? (
+          <Image source={{ uri: product.image_url }} style={styles.productImage} resizeMode="cover" />
+        ) : (
+          <View style={styles.imageFallback}>
+            <Text style={styles.imageFallbackText}>WAZOBIA</Text>
+          </View>
+        )}
+        {!!product.category && (
+          <View style={styles.categoryBadge}>
+            <Text style={styles.categoryText}>{product.category.toUpperCase()}</Text>
+          </View>
+        )}
       </TouchableOpacity>
 
       {/* Product Info */}
       <View style={styles.infoWrapper}>
         <TouchableOpacity onPress={() => onPressProduct(product)} activeOpacity={0.7}>
           <Text style={styles.title} numberOfLines={1}>
-            {product.title}
+            {product.name}
           </Text>
-          <Text style={styles.price}>{product.formattedPrice}</Text>
+          <Text style={styles.price}>{formatPrice(product.price)}</Text>
         </TouchableOpacity>
 
         {/* Interactive Size Selector */}
@@ -109,6 +112,18 @@ const styles = StyleSheet.create({
   productImage: {
     width: '100%',
     height: '100%',
+  },
+  imageFallback: {
+    flex: 1,
+    backgroundColor: '#f1e6dc',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageFallbackText: {
+    color: '#c85a32',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 4,
   },
   categoryBadge: {
     position: 'absolute',

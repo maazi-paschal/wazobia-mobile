@@ -6,6 +6,7 @@ import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { AuthProvider } from './src/context/AuthContext';
 import { CartProvider, useCart } from './src/context/CartContext';
 import { OrderProvider, useOrders } from './src/context/OrderContext';
+import { ProductsProvider } from './src/context/ProductsContext';
 
 // Navigation & Screens
 import { BottomTabBar, TABS } from './src/components/BottomTabBar';
@@ -86,11 +87,13 @@ const NavigationContainer = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <OrderProvider>
-          <NavigationContainer />
-        </OrderProvider>
-      </CartProvider>
+      <ProductsProvider>
+        <CartProvider>
+          <OrderProvider>
+            <NavigationContainer />
+          </OrderProvider>
+        </CartProvider>
+      </ProductsProvider>
     </AuthProvider>
   );
 }

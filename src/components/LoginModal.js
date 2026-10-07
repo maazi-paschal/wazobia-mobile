@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Modal,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   SafeAreaView,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -16,26 +15,12 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
 export const LoginModal = ({ visible, onClose }) => {
-  const { user, signIn, signUp, demoSignIn, signOut, loading } = useAuth();
+  const { user, signInWithGoogle, signOut, googleLoading } = useAuth();
   const { cart, isSyncing } = useCart();
-  
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
 
-  const handleAuthSubmit = async () => {
-    if (isRegisterMode) {
-      const { error } = await signUp(email, password);
-      if (!error) onClose();
-    } else {
-      const { error } = await signIn(email, password);
-      if (!error) onClose();
-    }
-  };
-
-  const handleDemoSignIn = () => {
-    demoSignIn(email || 'customer@wazobia.shop');
-    onClose();
+  const handleGoogle = async () => {
+    const { error } = await signInWithGoogle();
+    if (!error) onClose();
   };
 
   return (
@@ -56,7 +41,7 @@ export const LoginModal = ({ visible, onClose }) => {
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
             <Text style={styles.headerTitle}>
-              {user ? 'ACCOUNT & SYNC' : isRegisterMode ? 'JOIN WAZOBIA' : 'SIGN IN'}
+              {user ? 'ACCOUNT & SYNC' : 'SIGN IN'}
             </Text>
             <View style={{ width: 40 }} />
           </View>
@@ -92,91 +77,24 @@ export const LoginModal = ({ visible, onClose }) => {
                 </TouchableOpacity>
               </View>
             ) : (
-              /* Sign In / Sign Up Form */
+              /* Google Sign In */
               <View style={styles.formContainer}>
-                <Text style={styles.heroTitle}>
-                  {isRegisterMode ? 'Create Your Account' : 'Welcome to Wazobia'}
-                </Text>
+                <Text style={styles.heroTitle}>Welcome to Wazobia</Text>
                 <Text style={styles.heroSubtitle}>
                   Sign in to seamlessly sync your cart, save preferences, and access exclusive Afro-luxury releases.
                 </Text>
 
-                {/* Mode Selector Tabs */}
-                <View style={styles.modeTabs}>
-                  <TouchableOpacity
-                    style={[styles.modeTab, !isRegisterMode && styles.modeTabActive]}
-                    onPress={() => setIsRegisterMode(false)}
-                  >
-                    <Text style={[styles.modeTabText, !isRegisterMode && styles.modeTabTextActive]}>
-                      SIGN IN
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modeTab, isRegisterMode && styles.modeTabActive]}
-                    onPress={() => setIsRegisterMode(true)}
-                  >
-                    <Text style={[styles.modeTabText, isRegisterMode && styles.modeTabTextActive]}>
-                      REGISTER
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Email Input */}
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. member@wazobia.shop"
-                    placeholderTextColor="#999999"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                </View>
-
-                {/* Password Input */}
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.inputLabel}>PASSWORD</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="••••••••"
-                    placeholderTextColor="#999999"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                  />
-                </View>
-
-                {/* Submit Button */}
                 <TouchableOpacity
                   style={styles.submitButton}
-                  onPress={handleAuthSubmit}
-                  disabled={loading}
+                  onPress={handleGoogle}
+                  disabled={googleLoading}
                   activeOpacity={0.85}
                 >
-                  {loading ? (
+                  {googleLoading ? (
                     <ActivityIndicator color="#FCFBF9" />
                   ) : (
-                    <Text style={styles.submitButtonText}>
-                      {isRegisterMode ? 'CREATE ACCOUNT' : 'SIGN IN & SYNC CART'}
-                    </Text>
+                    <Text style={styles.submitButtonText}>CONTINUE WITH GOOGLE</Text>
                   )}
-                </TouchableOpacity>
-
-                {/* Instant Demo Sign-In */}
-                <View style={styles.dividerRow}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>OR QUICK TEST</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                <TouchableOpacity
-                  style={styles.demoButton}
-                  onPress={handleDemoSignIn}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.demoButtonText}>⚡ INSTANT DEMO LOGIN</Text>
                 </TouchableOpacity>
               </View>
             )}

@@ -11,16 +11,20 @@ import {
   Dimensions,
 } from 'react-native';
 import { useCart } from '../context/CartContext';
+import { formatPrice, defaultSizeFor } from '../utils/catalog';
 
 const { width } = Dimensions.get('window');
 
 export const ProductDetailModal = ({ product, visible, onClose }) => {
   if (!product) return null;
-
-  const { addToCart } = useCart();
-  const [selectedSize, setSelectedSize] = useState(
-    product.defaultSize || product.sizes?.[0] || 'M'
+  return (
+    <ProductDetailContent key={product.id} product={product} visible={visible} onClose={onClose} />
   );
+};
+
+const ProductDetailContent = ({ product, visible, onClose }) => {
+  const { addToCart } = useCart();
+  const [selectedSize, setSelectedSize] = useState(defaultSizeFor(product.sizes));
 
   const handleAdd = () => {
     addToCart(product, selectedSize);
@@ -40,30 +44,37 @@ export const ProductDetailModal = ({ product, visible, onClose }) => {
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Text style={styles.closeText}>✕</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{product.category.toUpperCase()}</Text>
+          <Text style={styles.headerTitle}>{(product.category || 'WAZOBIA').toUpperCase()}</Text>
           <View style={{ width: 40 }} />
         </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* Main Hero Image */}
           <View style={styles.imageContainer}>
-            <Image
-              source={{ uri: product.image }}
-              style={styles.image}
-              resizeMode="cover"
-            />
+            {product.image_url ? (
+              <Image
+                source={{ uri: product.image_url }}
+                style={styles.image}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.imageFallback}>
+                <Text style={styles.imageFallbackText}>WAZOBIA</Text>
+              </View>
+            )}
           </View>
 
           {/* Product Details */}
           <View style={styles.detailsBox}>
-            <Text style={styles.title}>{product.title}</Text>
-            <Text style={styles.price}>{product.formattedPrice}</Text>
-            <Text style={styles.tagline}>{product.tagline}</Text>
+            <Text style={styles.title}>{product.name}</Text>
+            <Text style={styles.price}>{formatPrice(product.price)}</Text>
 
             <View style={styles.divider} />
 
             <Text style={styles.sectionHeading}>DESCRIPTION</Text>
-            <Text style={styles.description}>{product.description}</Text>
+            <Text style={styles.description}>
+              {product.description || 'No description available.'}
+            </Text>
 
             <View style={styles.divider} />
 
@@ -97,7 +108,7 @@ export const ProductDetailModal = ({ product, visible, onClose }) => {
         {/* Fixed Footer CTA */}
         <View style={styles.footer}>
           <TouchableOpacity style={styles.addButton} onPress={handleAdd} activeOpacity={0.85}>
-            <Text style={styles.addButtonText}>ADD TO BAG — {product.formattedPrice}</Text>
+            <Text style={styles.addButtonText}>ADD TO BAG — {formatPrice(product.price)}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -145,6 +156,18 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  imageFallback: {
+    flex: 1,
+    backgroundColor: '#f1e6dc',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageFallbackText: {
+    color: '#c85a32',
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: 6,
   },
   detailsBox: {
     padding: 18,

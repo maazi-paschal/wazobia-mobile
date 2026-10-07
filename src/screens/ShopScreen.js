@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,44 +6,94 @@ import {
   FlatList,
   SafeAreaView,
   StatusBar,
-  Platform,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { FilterTabs } from '../components/FilterTabs';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { ProductFilters } from '../components/ProductFilters';
 import { ProductCard } from '../components/ProductCard';
 import { ProductDetailModal } from '../components/ProductDetailModal';
-import { PRODUCTS } from '../data/products';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { useProducts } from '../context/ProductsContext';
+import { filterAndSortProducts, getUserProfile } from '../utils/catalog';
 
 export const ShopScreen = ({ onNavigateToSearch }) => {
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [category, setCategory] = useState('All');
+  const [size, setSize] = useState('');
+  const [sortBy, setSortBy] = useState('featured');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const { isSyncing } = useCart();
+  const { user } = useAuth();
+  const { products, loading, error, refresh } = useProducts();
 
-  const filteredProducts = PRODUCTS.filter((product) => {
-    if (activeCategory === 'All') return true;
-    return product.category.toLowerCase() === activeCategory.toLowerCase();
-  });
+  const greeting = user ? `Welcome, ${getUserProfile(user).firstName}` : 'Welcome, Guest';
+
+  const filteredProducts = useMemo(
+    () => filterAndSortProducts(products, { category, size, sortBy }),
+    [products, category, size, sortBy]
+  );
+
+  const resetFilters = () => {
+    setCategory('All');
+    setSize('');
+    setSortBy('featured');
+  };
+
+  const renderEmpty = () => {
+    if (loading) {
+      return (
+        <View style={styles.stateBox}>
+          <ActivityIndicator color="#c85a32" size="large" />
+          <Text style={styles.stateText}>Loading the collection…</Text>
+        </View>
+      );
+    }
+    if (error) {
+      return (
+        <View style={styles.stateBox}>
+          <Text style={styles.stateTitle}>Couldn't load products</Text>
+          <Text style={styles.stateText}>{error}</Text>
+          <TouchableOpacity style={styles.stateBtn} onPress={refresh}>
+            <Text style={styles.stateBtnText}>TRY AGAIN</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return (
+      <View style={styles.stateBox}>
+        <Text style={styles.stateTitle}>
+          {products.length ? 'No pieces match your filters.' : 'No products are available yet.'}
+        </Text>
+        {products.length > 0 && (
+          <TouchableOpacity style={styles.stateBtn} onPress={resetFilters}>
+            <Text style={styles.stateBtnText}>RESET FILTERS</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fcfbf9" />
 
       {/* Brand Header */}
-      <View style={styles.brandHeader}>
-        <View>
-          <Text style={styles.brandTitle}>WAZOBIA</Text>
-          <Text style={styles.brandSubtitle}>COUTURE & AFRO-LUXURY</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.searchQuickBtn}
-          onPress={onNavigateToSearch}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.searchQuickIcon}>🔍</Text>
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        brand
+        title="WAZOBIA"
+        subtitle={greeting}
+        right={
+          <TouchableOpacity
+            style={styles.searchQuickBtn}
+            onPress={onNavigateToSearch}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.searchQuickIcon}>🔍</Text>
+          </TouchableOpacity>
+        }
+      />
 
       {/* Cloud Sync Notification Bar */}
       {isSyncing && (
@@ -52,37 +102,37 @@ export const ShopScreen = ({ onNavigateToSearch }) => {
         </View>
       )}
 
-      {/* Category Tabs */}
-      <FilterTabs
-        activeCategory={activeCategory}
-        onSelectCategory={setActiveCategory}
+      {/* Category pills + Size / Sort dropdowns */}
+      <ProductFilters
+        category={category}
+        onCategoryChange={setCategory}
+        size={size}
+        onSizeChange={setSize}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        resultCount={loading ? undefined : filteredProducts.length}
+        onReset={resetFilters}
       />
 
       {/* 2-Column Product Grid */}
       <FlatList
         data={filteredProducts}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         numColumns={2}
         columnWrapperStyle={styles.gridColumnWrapper}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <ProductCard
-            product={item}
-            onPressProduct={(prod) => setSelectedProduct(prod)}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading && products.length > 0}
+            onRefresh={refresh}
+            tintColor="#c85a32"
           />
-        )}
-        ListHeaderComponent={
-          <View style={styles.heroBanner}>
-            <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>NEW SEASON 2026</Text>
-            </View>
-            <Text style={styles.heroTitle}>The Heritage Capsule</Text>
-            <Text style={styles.heroDescription}>
-              Hand-dyed Adire, architectural Agbada drapes, and artisanal bronze accents handcrafted across West Africa.
-            </Text>
-          </View>
         }
+        renderItem={({ item }) => (
+          <ProductCard product={item} onPressProduct={(prod) => setSelectedProduct(prod)} />
+        )}
+        ListEmptyComponent={renderEmpty}
       />
 
       {/* Product Detail Modal */}
@@ -100,35 +150,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fcfbf9',
   },
-  brandHeader: {
-    height: 60,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e8e6df',
-    backgroundColor: '#fcfbf9',
-    paddingTop: Platform.OS === 'android' ? 6 : 0,
-  },
-  brandTitle: {
-    fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif',
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#111111',
-    letterSpacing: 4,
-  },
-  brandSubtitle: {
-    fontSize: 8.5,
-    fontWeight: '700',
-    color: '#c85a32',
-    letterSpacing: 2,
-    marginTop: 1,
-  },
   searchQuickBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#e8e6df',
@@ -148,45 +173,46 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: '600',
   },
-  heroBanner: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e8e6df',
-  },
-  heroBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#c85a32',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    marginBottom: 8,
-  },
-  heroBadgeText: {
-    color: '#ffffff',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  heroTitle: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#111111',
-    marginBottom: 4,
-  },
-  heroDescription: {
-    fontSize: 12,
-    color: '#666666',
-    lineHeight: 18,
-  },
   listContent: {
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 24,
+    flexGrow: 1,
   },
   gridColumnWrapper: {
     justifyContent: 'space-between',
+  },
+  stateBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 24,
+  },
+  stateTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111111',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  stateText: {
+    fontSize: 12.5,
+    color: '#666666',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  stateBtn: {
+    marginTop: 16,
+    backgroundColor: '#111111',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 6,
+  },
+  stateBtnText: {
+    color: '#fcfbf9',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
 });

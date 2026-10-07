@@ -11,12 +11,13 @@ import {
 } from 'react-native';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { formatPrice } from '../utils/catalog';
 
 export const CartModal = ({ visible, onClose, onCheckout }) => {
   const { cart, removeFromCart, updateQuantity, subtotal, isSyncing, clearCart } = useCart();
   const { user } = useAuth();
 
-  const formattedSubtotal = `₦${subtotal.toLocaleString()}`;
+  const formattedSubtotal = formatPrice(subtotal);
 
   return (
     <Modal
@@ -69,21 +70,21 @@ export const CartModal = ({ visible, onClose, onCheckout }) => {
           <>
             <ScrollView contentContainerStyle={styles.itemList}>
               {cart.map((item, index) => (
-                <View key={`${item.id}-${item.selectedSize}-${index}`} style={styles.cartItem}>
-                  <Image source={{ uri: item.image }} style={styles.itemImage} />
+                <View key={`${item.id}-${item.size}-${index}`} style={styles.cartItem}>
+                  <Image source={{ uri: item.image_url }} style={styles.itemImage} />
                   
                   <View style={styles.itemDetails}>
                     <Text style={styles.itemTitle} numberOfLines={1}>
-                      {item.title}
+                      {item.name}
                     </Text>
-                    <Text style={styles.itemSize}>SIZE: {item.selectedSize}</Text>
-                    <Text style={styles.itemPrice}>₦{(item.price * item.quantity).toLocaleString()}</Text>
+                    <Text style={styles.itemSize}>SIZE: {item.size}</Text>
+                    <Text style={styles.itemPrice}>{formatPrice(item.price * item.quantity)}</Text>
                     
                     {/* Stepper controls */}
                     <View style={styles.stepperRow}>
                       <TouchableOpacity
                         style={styles.stepperButton}
-                        onPress={() => updateQuantity(item.id, item.selectedSize, -1)}
+                        onPress={() => updateQuantity(item.id, item.size, -1)}
                       >
                         <Text style={styles.stepperText}>-</Text>
                       </TouchableOpacity>
@@ -92,7 +93,7 @@ export const CartModal = ({ visible, onClose, onCheckout }) => {
                       
                       <TouchableOpacity
                         style={styles.stepperButton}
-                        onPress={() => updateQuantity(item.id, item.selectedSize, 1)}
+                        onPress={() => updateQuantity(item.id, item.size, 1)}
                       >
                         <Text style={styles.stepperText}>+</Text>
                       </TouchableOpacity>
@@ -102,7 +103,7 @@ export const CartModal = ({ visible, onClose, onCheckout }) => {
                   {/* Remove Button */}
                   <TouchableOpacity
                     style={styles.removeButton}
-                    onPress={() => removeFromCart(item.id, item.selectedSize)}
+                    onPress={() => removeFromCart(item.id, item.size)}
                   >
                     <Text style={styles.removeText}>🗑️</Text>
                   </TouchableOpacity>

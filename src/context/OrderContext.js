@@ -1,20 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const ORDER_HISTORY_KEY = '@wazobia_orders_v1';
+// v2: amounts are USD (v1 held legacy Naira mock data)
+const ORDER_HISTORY_KEY = '@wazobia_orders_v2';
 const OrderContext = createContext();
 
 export const OrderProvider = ({ children }) => {
-  const [orders, setOrders] = useState([
-    {
-      orderNumber: 'WZ-849201',
-      date: 'Oct 04, 2026',
-      totalAmount: 85000,
-      paymentMethod: 'Pay on Delivery',
-      status: 'Delivered',
-      itemsCount: 1,
-    }
-  ]);
+  const [orders, setOrders] = useState([]);
 
   useEffect(() => {
     const loadOrders = async () => {

@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../supabase';
 import { Alert } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
+import { supabase } from '../supabase';
+
+// Required so the auth popup can close and hand control back to the app
+WebBrowser.maybeCompleteAuthSession();
 
 const AuthContext = createContext();
 
@@ -8,6 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
     // Check initial active session
@@ -27,51 +33,46 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email, password) => {
-    if (!email || !password) {
-      Alert.alert('Missing Fields', 'Please provide both email and password.');
-      return { error: { message: 'Missing email or password' } };
-    }
-    setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password: password,
-    });
-    setLoading(false);
-    if (error) {
-      Alert.alert('Sign In Failed', error.message);
-    }
-    return { data, error };
-  };
+  // Google OAuth via Supabase + Expo WebBrowser
+  const signInWithGoogle = async () => {
+    setGoogleLoading(true);
+    try {
+      const redirectUrl = makeRedirectUri({ scheme: 'wazobia' });
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error) throw error;
 
-  const signUp = async (email, password) => {
-    if (!email || !password) {
-      Alert.alert('Missing Fields', 'Please provide both email and password.');
-      return { error: { message: 'Missing email or password' } };
+      if (data?.url) {
+        const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+        if (res.type === 'success' && res.url) {
+          const urlParts = res.url.split('#')[1] || res.url.split('?')[1];
+          if (urlParts) {
+            const params = Object.fromEntries(new URLSearchParams(urlParts));
+            if (params.access_token && params.refresh_token) {
+              const { error: sessionError } = await supabase.auth.setSession({
+                access_token: params.access_token,
+                refresh_token: params.refresh_token,
+              });
+              if (sessionError) throw sessionError;
+            } else if (params.error_description || params.error) {
+              throw new Error(params.error_description || params.error);
+            }
+          }
+        }
+      }
+      return { error: null };
+    } catch (err) {
+      console.log('Google sign-in error:', err?.message || err);
+      Alert.alert('Google Sign-In Failed', err?.message || 'Please try again.');
+      return { error: err };
+    } finally {
+      setGoogleLoading(false);
     }
-    setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password: password,
-    });
-    setLoading(false);
-    if (error) {
-      Alert.alert('Sign Up Failed', error.message);
-    } else {
-      Alert.alert('Success', 'Account created! If email confirmation is enabled, check your inbox.');
-    }
-    return { data, error };
-  };
-
-  // Demo Sign-In feature for quick testing without backend email verification
-  const demoSignIn = (email = 'fashionista@wazobia.shop') => {
-    const demoUser = {
-      id: 'demo-user-123',
-      email: email,
-      user_metadata: { full_name: 'Wazobia Member' }
-    };
-    setUser(demoUser);
-    setSession({ user: demoUser });
   };
 
   const signOut = async () => {
@@ -88,9 +89,8 @@ export const AuthProvider = ({ children }) => {
         user,
         session,
         loading,
-        signIn,
-        signUp,
-        demoSignIn,
+        googleLoading,
+        signInWithGoogle,
         signOut,
       }}
     >

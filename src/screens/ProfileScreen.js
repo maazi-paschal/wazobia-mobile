@@ -1,231 +1,185 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   ScrollView,
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+  Image,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useOrders } from '../context/OrderContext';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { formatPrice, getUserProfile } from '../utils/catalog';
+
+/* Multi-colour Google "G" built from text so no extra asset is needed. */
+const GoogleMark = () => (
+  <View style={styles.googleMark}>
+    <Text style={styles.googleMarkText}>G</Text>
+  </View>
+);
 
 export const ProfileScreen = () => {
-  const { user, signIn, signUp, demoSignIn, signOut, loading } = useAuth();
+  const { user, signInWithGoogle, signOut, loading, googleLoading } = useAuth();
   const { cart, isSyncing } = useCart();
   const { orders } = useOrders();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
-
-  const handleAuthSubmit = async () => {
-    if (isRegisterMode) {
-      await signUp(email, password);
-    } else {
-      await signIn(email, password);
-    }
-  };
-
-  const handleDemoSignIn = () => {
-    demoSignIn(email || 'patron@wazobia.shop');
-  };
+  const profile = user ? getUserProfile(user) : null;
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fcfbf9" />
 
       {/* Screen Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {user ? 'MY ACCOUNT & ORDERS' : 'ACCOUNT & MEMBERSHIP'}
-        </Text>
-      </View>
+      <ScreenHeader
+        title="My Profile"
+        subtitle={user ? 'Account, cart sync & orders' : 'Sign in to sync your bag'}
+      />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {user ? (
-            /* Logged In View */
-            <View>
-              {/* Profile Card */}
-              <View style={styles.profileCard}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {loading && !user ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator color="#c85a32" size="large" />
+          </View>
+        ) : user ? (
+          /* Logged In View */
+          <View>
+            {/* Profile Card */}
+            <View style={styles.profileCard}>
+              {profile.avatarUrl ? (
+                <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
+              ) : (
                 <View style={styles.avatarCircle}>
                   <Text style={styles.avatarText}>
-                    {user.email ? user.email.charAt(0).toUpperCase() : 'W'}
+                    {(profile.fullName || 'W').charAt(0).toUpperCase()}
                   </Text>
                 </View>
-                <View style={styles.profileDetails}>
-                  <Text style={styles.userNameText}>Wazobia Member</Text>
-                  <Text style={styles.userEmailText}>{user.email}</Text>
-                  <View style={styles.memberStatusBadge}>
-                    <Text style={styles.memberStatusText}>VIP PATRON</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Cloud Sync Status Card */}
-              <View style={styles.syncCard}>
-                <View style={styles.syncHeaderRow}>
-                  <Text style={styles.syncIcon}>⚡</Text>
-                  <Text style={styles.syncCardTitle}>TWO-WAY CLOUD CART SYNC</Text>
-                </View>
-                <Text style={styles.syncCardDesc}>
-                  Your cart items ({cart.length} item{cart.length === 1 ? '' : 's'}) are automatically synced in real time across the Wazobia website and mobile application via Supabase <Text style={{ fontWeight: '700' }}>user_carts</Text>.
-                </Text>
-                <View style={styles.syncStatusRow}>
-                  <View style={styles.activeDot} />
-                  <Text style={styles.syncActiveText}>
-                    {isSyncing ? 'Syncing with Supabase...' : 'Real-Time Sync Active'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Order History Section */}
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>ORDER HISTORY</Text>
-                <Text style={styles.orderCount}>{orders.length} Order{orders.length === 1 ? '' : 's'}</Text>
-              </View>
-
-              {orders.length === 0 ? (
-                <View style={styles.emptyOrdersCard}>
-                  <Text style={styles.emptyOrderIcon}>📦</Text>
-                  <Text style={styles.emptyOrderText}>No previous orders recorded yet.</Text>
-                </View>
-              ) : (
-                orders.map((order, idx) => (
-                  <View key={order.orderNumber || idx} style={styles.orderCard}>
-                    <View style={styles.orderHeaderRow}>
-                      <Text style={styles.orderNumber}>#{order.orderNumber}</Text>
-                      <View style={styles.statusPill}>
-                        <Text style={styles.statusPillText}>{order.status || 'Processing'}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.orderDetailRow}>
-                      <Text style={styles.orderDetailLabel}>Date:</Text>
-                      <Text style={styles.orderDetailVal}>{order.date || 'Today'}</Text>
-                    </View>
-
-                    <View style={styles.orderDetailRow}>
-                      <Text style={styles.orderDetailLabel}>Payment:</Text>
-                      <Text style={styles.orderDetailValHighlight}>
-                        {order.paymentMethod || 'Pay on Delivery (POD)'}
-                      </Text>
-                    </View>
-
-                    <View style={[styles.orderDetailRow, { marginTop: 4 }]}>
-                      <Text style={styles.orderDetailLabel}>Total Amount:</Text>
-                      <Text style={styles.orderTotalAmount}>₦{order.totalAmount.toLocaleString()}</Text>
-                    </View>
-                  </View>
-                ))
               )}
-
-              {/* Sign Out CTA */}
-              <TouchableOpacity style={styles.signOutBtn} onPress={signOut} activeOpacity={0.85}>
-                <Text style={styles.signOutBtnText}>SIGN OUT</Text>
-              </TouchableOpacity>
+              <Text style={styles.userNameText}>{profile.fullName}</Text>
+              <Text style={styles.userEmailText}>{profile.email}</Text>
+              <View style={styles.memberStatusBadge}>
+                <Text style={styles.memberStatusText}>✦ WAZOBIA MEMBER</Text>
+              </View>
             </View>
-          ) : (
-            /* Guest Sign In / Register View */
-            <View style={styles.authContainer}>
-              <Text style={styles.heroAuthTitle}>
-                {isRegisterMode ? 'Create Wazobia Account' : 'Sign In to Your Account'}
+
+            {/* Cloud Sync Status Card */}
+            <View style={styles.syncCard}>
+              <View style={styles.syncHeaderRow}>
+                <Text style={styles.syncIcon}>⚡</Text>
+                <Text style={styles.syncCardTitle}>TWO-WAY CLOUD CART SYNC</Text>
+              </View>
+              <Text style={styles.syncCardDesc}>
+                Your bag ({cart.length} item{cart.length === 1 ? '' : 's'}) is synced in real time
+                between the Wazobia website and this app.
               </Text>
+              <View style={styles.syncStatusRow}>
+                <View style={styles.activeDot} />
+                <Text style={styles.syncActiveText}>
+                  {isSyncing ? 'Syncing with cloud...' : 'Real-Time Sync Active'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Order History Section */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>ORDER HISTORY</Text>
+              <Text style={styles.orderCount}>
+                {orders.length} Order{orders.length === 1 ? '' : 's'}
+              </Text>
+            </View>
+
+            {orders.length === 0 ? (
+              <View style={styles.emptyOrdersCard}>
+                <Text style={styles.emptyOrderIcon}>📦</Text>
+                <Text style={styles.emptyOrderText}>No previous orders recorded yet.</Text>
+              </View>
+            ) : (
+              orders.map((order, idx) => (
+                <View key={order.orderNumber || idx} style={styles.orderCard}>
+                  <View style={styles.orderHeaderRow}>
+                    <Text style={styles.orderNumber}>#{order.orderNumber}</Text>
+                    <View style={styles.statusPill}>
+                      <Text style={styles.statusPillText}>{order.status || 'Processing'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.orderDetailRow}>
+                    <Text style={styles.orderDetailLabel}>Date:</Text>
+                    <Text style={styles.orderDetailVal}>{order.date || 'Today'}</Text>
+                  </View>
+
+                  <View style={styles.orderDetailRow}>
+                    <Text style={styles.orderDetailLabel}>Payment:</Text>
+                    <Text style={styles.orderDetailValHighlight}>
+                      {order.paymentMethod || 'Pay on Delivery (POD)'}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.orderDetailRow, { marginTop: 4 }]}>
+                    <Text style={styles.orderDetailLabel}>Total Amount:</Text>
+                    <Text style={styles.orderTotalAmount}>{formatPrice(order.totalAmount)}</Text>
+                  </View>
+                </View>
+              ))
+            )}
+
+            {/* Sign Out CTA */}
+            <TouchableOpacity style={styles.signOutBtn} onPress={signOut} activeOpacity={0.85}>
+              <Text style={styles.signOutBtnText}>SIGN OUT</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          /* Guest Sign In View */
+          <View style={styles.authContainer}>
+            <View style={styles.authHero}>
+              <Text style={styles.authBrand}>WAZOBIA</Text>
+              <View style={styles.authRule} />
+              <Text style={styles.heroAuthTitle}>Join the House of Wazobia</Text>
               <Text style={styles.heroAuthSubtitle}>
-                Sign in with your registered account credentials to automatically sync your shopping bag between devices and track order deliveries.
+                Sign in to sync your shopping bag between the website and app, track orders, and
+                unlock member-only releases.
               </Text>
-
-              {/* Mode Toggle Tabs */}
-              <View style={styles.authTabs}>
-                <TouchableOpacity
-                  style={[styles.authTab, !isRegisterMode && styles.authTabActive]}
-                  onPress={() => setIsRegisterMode(false)}
-                >
-                  <Text style={[styles.authTabText, !isRegisterMode && styles.authTabTextActive]}>
-                    SIGN IN
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.authTab, isRegisterMode && styles.authTabActive]}
-                  onPress={() => setIsRegisterMode(true)}
-                >
-                  <Text style={[styles.authTabText, isRegisterMode && styles.authTabTextActive]}>
-                    REGISTER
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Inputs */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="patron@wazobia.shop"
-                  placeholderTextColor="#999999"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>PASSWORD</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="••••••••"
-                  placeholderTextColor="#999999"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                />
-              </View>
-
-              {/* Submit Button */}
-              <TouchableOpacity
-                style={styles.submitBtn}
-                onPress={handleAuthSubmit}
-                disabled={loading}
-                activeOpacity={0.85}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fcfbf9" />
-                ) : (
-                  <Text style={styles.submitBtnText}>
-                    {isRegisterMode ? 'CREATE ACCOUNT' : 'SIGN IN & SYNC BAG'}
-                  </Text>
-                )}
-              </TouchableOpacity>
-
-              {/* Quick Demo Test Option */}
-              <View style={styles.orDivider}>
-                <View style={styles.orLine} />
-                <Text style={styles.orText}>OR QUICK TEST</Text>
-                <View style={styles.orLine} />
-              </View>
-
-              <TouchableOpacity
-                style={styles.demoLoginBtn}
-                onPress={handleDemoSignIn}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.demoLoginBtnText}>⚡ INSTANT DEMO LOGIN</Text>
-              </TouchableOpacity>
             </View>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+            <TouchableOpacity
+              style={[styles.googleBtn, googleLoading && { opacity: 0.7 }]}
+              onPress={signInWithGoogle}
+              disabled={googleLoading}
+              activeOpacity={0.85}
+            >
+              {googleLoading ? (
+                <ActivityIndicator color="#111111" />
+              ) : (
+                <>
+                  <GoogleMark />
+                  <Text style={styles.googleBtnText}>Continue with Google</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.perksCard}>
+              {[
+                ['⚡', 'Two-way cart sync with wazobia-shop'],
+                ['📦', 'Order history & delivery tracking'],
+                ['✦', 'Early access to new drops'],
+              ].map(([icon, text]) => (
+                <View key={text} style={styles.perkRow}>
+                  <Text style={styles.perkIcon}>{icon}</Text>
+                  <Text style={styles.perkText}>{text}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Text style={styles.legalText}>
+              By continuing you agree to Wazobia's Terms of Service and Privacy Policy.
+            </Text>
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -235,76 +189,71 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fcfbf9',
   },
-  header: {
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e8e6df',
-    backgroundColor: '#fcfbf9',
-  },
-  headerTitle: {
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 2,
-    color: '#111111',
-  },
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
   },
+  loadingBox: {
+    paddingVertical: 80,
+    alignItems: 'center',
+  },
   profileCard: {
-    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: '#e8e6df',
     marginBottom: 16,
   },
+  avatarImage: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    marginBottom: 12,
+    borderWidth: 3,
+    borderColor: '#f1e6dc',
+  },
   avatarCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     backgroundColor: '#111111',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginBottom: 12,
   },
   avatarText: {
     color: '#fcfbf9',
-    fontSize: 22,
+    fontSize: 32,
     fontWeight: '900',
   },
-  profileDetails: {
-    flex: 1,
-  },
   userNameText: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 19,
+    fontWeight: '900',
     color: '#111111',
+    textAlign: 'center',
   },
   userEmailText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#666666',
-    marginTop: 2,
-    marginBottom: 6,
+    marginTop: 3,
+    marginBottom: 12,
   },
   memberStatusBadge: {
-    alignSelf: 'flex-start',
     backgroundColor: '#fff8f5',
     borderWidth: 1,
     borderColor: '#c85a32',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
   },
   memberStatusText: {
     color: '#c85a32',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
   },
   syncCard: {
     backgroundColor: '#ffffff',
@@ -457,113 +406,107 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   authContainer: {
-    paddingVertical: 10,
+    paddingVertical: 8,
+  },
+  authHero: {
+    backgroundColor: '#111111',
+    borderRadius: 18,
+    paddingVertical: 30,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    marginBottom: 22,
+  },
+  authBrand: {
+    color: '#fcfbf9',
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: 8,
+  },
+  authRule: {
+    width: 36,
+    height: 2,
+    backgroundColor: '#c85a32',
+    marginVertical: 14,
   },
   heroAuthTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#111111',
-    marginBottom: 6,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#fcfbf9',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   heroAuthSubtitle: {
     fontSize: 12.5,
-    color: '#666666',
+    color: '#bdb7ad',
     lineHeight: 19,
-    marginBottom: 20,
+    textAlign: 'center',
   },
-  authTabs: {
+  googleBtn: {
     flexDirection: 'row',
-    backgroundColor: '#f3efea',
-    borderRadius: 8,
-    padding: 3,
-    marginBottom: 20,
-  },
-  authTab: {
-    flex: 1,
-    paddingVertical: 9,
     alignItems: 'center',
-    borderRadius: 6,
-  },
-  authTabActive: {
+    justifyContent: 'center',
     backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#111111',
+    borderRadius: 30,
+    paddingVertical: 15,
+    minHeight: 56,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  authTabText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#777777',
-    letterSpacing: 1,
-  },
-  authTabTextActive: {
-    color: '#111111',
-    fontWeight: '900',
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    color: '#444444',
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  textInput: {
+  googleMark: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#e8e6df',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    fontSize: 13,
-    color: '#111111',
-  },
-  submitBtn: {
-    backgroundColor: '#111111',
-    paddingVertical: 14,
-    borderRadius: 8,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 6,
+    marginRight: 12,
   },
-  submitBtnText: {
-    color: '#fcfbf9',
-    fontSize: 12,
+  googleMarkText: {
+    fontSize: 15,
     fontWeight: '900',
-    letterSpacing: 1.5,
+    color: '#4285F4',
   },
-  orDivider: {
+  googleBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111111',
+    letterSpacing: 0.3,
+  },
+  perksCard: {
+    marginTop: 22,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e8e6df',
+    padding: 16,
+  },
+  perkRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    paddingVertical: 6,
   },
-  orLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e8e6df',
-  },
-  orText: {
-    marginHorizontal: 10,
-    fontSize: 9.5,
-    fontWeight: '700',
-    color: '#999999',
-    letterSpacing: 1,
-  },
-  demoLoginBtn: {
-    backgroundColor: '#fff8f5',
-    borderWidth: 1,
-    borderColor: '#c85a32',
-    paddingVertical: 13,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  demoLoginBtnText: {
+  perkIcon: {
+    width: 26,
+    fontSize: 14,
     color: '#c85a32',
-    fontSize: 11.5,
-    fontWeight: '900',
-    letterSpacing: 1,
+  },
+  perkText: {
+    fontSize: 12.5,
+    color: '#333333',
+    fontWeight: '600',
+  },
+  legalText: {
+    marginTop: 18,
+    fontSize: 10.5,
+    color: '#999999',
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });
