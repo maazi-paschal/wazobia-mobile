@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, SafeAreaView, Platform } from 'react-native';
-import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
+import { StyleSheet, View, SafeAreaView, Platform, StatusBar } from 'react-native';
 
 // Context Providers
 import { AuthProvider } from './src/context/AuthContext';
@@ -49,7 +48,7 @@ const NavigationContainer = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ExpoStatusBar style="dark" />
+      <StatusBar barStyle="dark-content" backgroundColor="#fcfbf9" />
 
       {/* Screen Container */}
       <View style={styles.screenWrapper}>
